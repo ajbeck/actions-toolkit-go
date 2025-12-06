@@ -1,19 +1,19 @@
 package core
 
 import (
-	"runtime"
+  "runtime"
 
-	"github.com/google/uuid"
+  "github.com/google/uuid"
 )
 
 var OsSpecificNewline string
 
 func init() {
-	if runtime.GOOS == "windows" {
-		OsSpecificNewline = "\r\n"
-	} else {
-		OsSpecificNewline = "\n"
-	}
+  if runtime.GOOS == "windows" {
+    OsSpecificNewline = "\r\n"
+  } else {
+    OsSpecificNewline = "\n"
+  }
 }
 
 // LookupEnvFunc defines a function that returns the value of an environment

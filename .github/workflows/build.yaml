@@ -13,11 +13,15 @@ jobs:
       - name: Set up Go
         # https://github.com/actions/setup-go
         uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
       - name: Run Go Fmt
         run: go fmt ./...
       - name: Run Go Vet
         run: go vet ./...
       - name: Build
         run: go build -v ./...
-      - name: Test
-        run: go test -v ./...
+      - name: Run Tests
+        run: |
+          go test ./... -v -cover -coverprofile=coverage.out
+          go tool cover -func=coverage.out

@@ -1,138 +1,138 @@
 package core
 
 import (
-	"errors"
-	"fmt"
-	"os"
-	"strings"
+  "errors"
+  "fmt"
+  "os"
+  "strings"
 
-	"github.com/google/uuid"
-	"github.com/spf13/afero"
+  "github.com/google/uuid"
+  "github.com/spf13/afero"
 )
 
 const (
-	// GithubStateFilePathEnv points to the env var that stores the state file path.
-	GithubStateFilePathEnv = "GITHUB_STATE"
-	// EnvironmentVariableFilePathEnv points to the env var that stores the env file path.
-	EnvironmentVariableFilePathEnv = "GITHUB_ENV"
-	// OutputFilePathEnv points to the env var that stores the output file path.
-	OutputFilePathEnv = "GITHUB_OUTPUT"
-	// SystemPathFilePathEnv points to the env var that stores the PATH file path.
-	SystemPathFilePathEnv = "GITHUB_PATH"
+  // GithubStateFilePathEnv points to the env var that stores the state file path.
+  GithubStateFilePathEnv = "GITHUB_STATE"
+  // EnvironmentVariableFilePathEnv points to the env var that stores the env file path.
+  EnvironmentVariableFilePathEnv = "GITHUB_ENV"
+  // OutputFilePathEnv points to the env var that stores the output file path.
+  OutputFilePathEnv = "GITHUB_OUTPUT"
+  // SystemPathFilePathEnv points to the env var that stores the PATH file path.
+  SystemPathFilePathEnv = "GITHUB_PATH"
 )
 
 // FileCommand represents a GitHub Actions file command targeting a specific file.
 type FileCommand struct {
-	Delimiter string
-	Fs        afero.Fs
-	FilePath  string
-	Key       string
-	Value     string
+  Delimiter string
+  Fs        afero.Fs
+  FilePath  string
+  Key       string
+  Value     string
 }
 
 // Send writes the file command to its target file using the provided
 // filesystem.
 // GitHub Command Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#about-workflow-commands
 func (fc *FileCommand) Send() error {
-	// contents, err := prepareKeyValueMessage(fc.Key, fc.Value)
+  // contents, err := prepareKeyValueMessage(fc.Key, fc.Value)
 
-	if strings.Contains(fc.Key, fc.Delimiter) || strings.Contains(fc.Value, fc.Delimiter) {
-		return errors.New("unexpected input: key and value cannot container " + fc.Delimiter)
-	}
+  if strings.Contains(fc.Key, fc.Delimiter) || strings.Contains(fc.Value, fc.Delimiter) {
+    return errors.New("unexpected input: key and value cannot contain " + fc.Delimiter)
+  }
 
-	var contents strings.Builder
+  var contents strings.Builder
 
-	_, err := fmt.Fprintf(&contents, "%s<<%s%s%s%s%s", fc.Key, fc.Delimiter, OsSpecificNewline, fc.Value, OsSpecificNewline, fc.Delimiter)
-	if err != nil {
-		return err
-	}
+  _, err := fmt.Fprintf(&contents, "%s<<%s%s%s%s%s", fc.Key, fc.Delimiter, OsSpecificNewline, fc.Value, OsSpecificNewline, fc.Delimiter)
+  if err != nil {
+    return err
+  }
 
-	f, err := fc.Fs.OpenFile(fc.FilePath, os.O_APPEND|os.O_WRONLY, 0644)
+  f, err := fc.Fs.OpenFile(fc.FilePath, os.O_APPEND|os.O_WRONLY, 0644)
 
-	if err != nil {
-		return err
-	}
+  if err != nil {
+    return err
+  }
 
-	defer func(f afero.File) {
-		err := f.Close()
-		if err != nil {
-			Debug(err.Error())
-		}
-	}(f)
+  defer func(f afero.File) {
+    err := f.Close()
+    if err != nil {
+      Debug(err.Error())
+    }
+  }(f)
 
-	_, err = f.Write([]byte(contents.String()))
+  _, err = f.Write([]byte(contents.String()))
 
-	return err
+  return err
 }
 
 // buildFileCommand constructs a FileCommand using the provided parameters.
 // The function provides an easily testable interface for creating FileCommands.
 func buildFileCommand(fs afero.Fs, lookupEnv LookupEnvFunc, uuidFunc uuidGeneratorFunc, envVar, key, value string) (*FileCommand, error) {
-	filePath, ok := lookupEnv(envVar)
+  filePath, ok := lookupEnv(envVar)
 
-	if !ok {
-		return nil, errors.New("unable to find environment variable for file command")
-	}
+  if !ok {
+    return nil, errors.New("unable to find environment variable for file command")
+  }
 
-	delimUuid, err := uuidFunc()
+  delimUuid, err := uuidFunc()
 
-	if err != nil {
-		return nil, fmt.Errorf("unable to generate UUID for file command delimiter: %w", err)
-	}
+  if err != nil {
+    return nil, fmt.Errorf("unable to generate UUID for file command delimiter: %w", err)
+  }
 
-	return &FileCommand{
-		Fs:        fs,
-		Delimiter: fmt.Sprintf("sthdelimiter_%s", delimUuid.String()),
-		FilePath:  filePath,
-		Key:       key,
-		Value:     value,
-	}, nil
+  return &FileCommand{
+    Fs:        fs,
+    Delimiter: fmt.Sprintf("sthdelimiter_%s", delimUuid.String()),
+    FilePath:  filePath,
+    Key:       key,
+    Value:     value,
+  }, nil
 }
 
 // SetEnv executes a GitHub Workflow command to set an environment variable in subsequent workflows steps.
 // GitHub Command Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#setting-an-environment-variable
 func SetEnv(key, value string) error {
-	fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, EnvironmentVariableFilePathEnv, key, value)
+  fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, EnvironmentVariableFilePathEnv, key, value)
 
-	if err != nil {
-		return err
-	}
+  if err != nil {
+    return err
+  }
 
-	return fileCommand.Send()
+  return fileCommand.Send()
 }
 
 // SetOutput executes a GitHub Workflow command to set a step output.
 // GitHub Command Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#setting-an-output-parameter
 func SetOutput(key, value string) error {
-	fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, OutputFilePathEnv, key, value)
+  fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, OutputFilePathEnv, key, value)
 
-	if err != nil {
-		return err
-	}
+  if err != nil {
+    return err
+  }
 
-	return fileCommand.Send()
+  return fileCommand.Send()
 }
 
 // SetState executes a GitHub Workflow command to set a state parameter which is available to post-actions
 // GitHub Command Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#sending-values-to-the-pre-and-post-actions
 func SetState(key, value string) error {
-	fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, GithubStateFilePathEnv, key, value)
+  fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, GithubStateFilePathEnv, key, value)
 
-	if err != nil {
-		return err
-	}
+  if err != nil {
+    return err
+  }
 
-	return fileCommand.Send()
+  return fileCommand.Send()
 }
 
 // AddToPath executes a GitHub Workflow command to add a directory to the system PATH for subsequent workflow steps.
 // GitHub Command Reference: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#adding-a-system-path
 func AddToPath(value string) error {
-	fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, SystemPathFilePathEnv, "PATH", value)
+  fileCommand, err := buildFileCommand(afero.NewOsFs(), os.LookupEnv, uuid.NewV7, SystemPathFilePathEnv, "PATH", value)
 
-	if err != nil {
-		return err
-	}
+  if err != nil {
+    return err
+  }
 
-	return fileCommand.Send()
+  return fileCommand.Send()
 }
