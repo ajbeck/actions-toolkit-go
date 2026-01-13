@@ -23,6 +23,7 @@ go get github.com/ajbeck/actions-toolkit-go
 ## Documentation
 
 For complete API documentation, see [pkg.go.dev/github.com/ajbeck/actions-toolkit-go](https://pkg.go.dev/github.com/ajbeck/actions-toolkit-go).
+For contributor workflow and testing conventions, see `AGENTS.md`.
 
 ## License
 
